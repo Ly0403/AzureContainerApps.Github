@@ -3,7 +3,7 @@ name: Build and Deploy .NET Web API to Azure Container Apps
 on:
   push:
     branches:
-      - main
+      - master
 
 env:
   ACR_NAME: webapitest
