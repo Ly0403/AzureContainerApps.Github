@@ -1,0 +1,64 @@
+name: Build and Deploy .NET Web API to Azure Container Apps
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  ACR_NAME: webapitest
+  RESOURCE_GROUP: webapitest
+  CONTAINER_APP_NAME: webapitest
+  IMAGE_NAME: webapi
+  DOTNET_VERSION: '10.0.x'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build project
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Publish project
+      run: dotnet publish -c Release -o ./publish
+
+    # 🔐 Login to Azure
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+    # 🔐 Login to ACR
+    - name: Login to Azure Container Registry
+      run: az acr login --name $ACR_NAME
+
+    # 🐳 Build and Push Docker Image
+    - name: Build and Push Docker image
+      run: |
+        IMAGE_TAG=${{ github.sha }}
+        docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG .
+        docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG
+        echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+    # 🚀 Deploy to Container Apps
+    - name: Deploy to Azure Container App
+      run: |
+        az containerapp update \
+          --name $CONTAINER_APP_NAME \
+          --resource-group $RESOURCE_GROUP \
+          --image $ACR_NAME.azurecr.io/$IMAGE_NAME:${{ env.IMAGE_TAG }}
