@@ -9,7 +9,7 @@ env:
   ACR_NAME: webapitest
   RESOURCE_GROUP: webapitest
   CONTAINER_APP_NAME: webapitest
-  IMAGE_NAME: webapi
+  IMAGE_NAME: webapitest
   DOTNET_VERSION: '10.0.x'
 
 jobs:
